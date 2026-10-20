@@ -1,0 +1,836 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#10110f">
+<meta name="description" content="Case prático: uma proposta de atendimento inteligente para escalar conversas sem perder o toque humano.">
+<title>Sabor Express — Atendimento que sabe quando passar a bola</title>
+<style>
+  :root{
+    color-scheme:dark;
+    --bg:#10110f;--panel:#171915;--panel2:#20231d;--ink:#f2f1e9;--muted:#a7aa9e;
+    --line:#34382f;--lime:#d7fa55;--orange:#ffb45c;--red:#ff806e;--mono:ui-monospace,"SFMono-Regular",Consolas,monospace;
+    --sans:Inter,"Segoe UI",system-ui,-apple-system,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:88px;background:var(--bg)}
+  body{margin:0;min-height:100vh;overflow-x:hidden;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+  a{color:inherit}
+  button,input{font:inherit}
+  button{color:inherit}
+  ::selection{background:var(--lime);color:var(--bg)}
+  .runner-intro{position:fixed;inset:0;z-index:100;display:none;place-items:center;overflow:hidden;background:var(--bg);pointer-events:none;animation:runner-reveal 2.45s ease-out both}
+  html.show-runner-intro .runner-intro{display:grid}
+  .runner-track{position:absolute;top:50%;left:0;width:116px;height:138px;transform:translate3d(-140px,-50%,0);animation:runner-cross 2.45s cubic-bezier(.38,.02,.62,.98) both}
+  .runner-character{position:relative;z-index:1;display:block;width:100%;height:100%;overflow:visible;animation:runner-bounce .22s ease-in-out infinite alternate}
+  .runner-limb{transform-box:view-box}
+  .runner-arm-back{transform-origin:44% 38%;animation:runner-swing .24s ease-in-out infinite alternate-reverse}
+  .runner-arm-front{transform-origin:58% 38%;animation:runner-swing .24s ease-in-out infinite alternate}
+  .runner-leg-back{transform-origin:44% 58%;animation:runner-swing .24s ease-in-out infinite alternate-reverse}
+  .runner-leg-front{transform-origin:49% 58%;animation:runner-swing .24s ease-in-out infinite alternate}
+  .runner-eye{fill:#10110f}
+  .runner-dust{position:absolute;bottom:15px;left:30px;width:9px;height:9px;border-radius:50%;background:#a7aa9e;opacity:0;animation:runner-dust .48s ease-out infinite}
+  .runner-dust:nth-child(2){left:13px;width:6px;height:6px;animation-delay:.16s}
+  .runner-dust:nth-child(3){left:2px;width:4px;height:4px;animation-delay:.32s}
+  @keyframes runner-reveal{0%,84%{opacity:1}100%{opacity:0;visibility:hidden}}
+  @keyframes runner-cross{0%{opacity:0;transform:translate3d(-140px,-50%,0)}8%{opacity:1}88%{opacity:1}100%{opacity:0;transform:translate3d(calc(100vw + 140px),-50%,0)}}
+  @keyframes runner-bounce{from{transform:translateY(-2px)}to{transform:translateY(2px)}}
+  @keyframes runner-swing{from{transform:rotate(-38deg)}to{transform:rotate(38deg)}}
+  @keyframes runner-dust{0%{opacity:0;transform:translate(0,0) scale(.5)}25%{opacity:.4}100%{opacity:0;transform:translate(-20px,9px) scale(1.5)}}
+  @media(max-width:600px){.runner-intro{animation-duration:2.15s}.runner-track{width:80px;height:96px;animation-duration:2.15s}.runner-dust{bottom:10px;left:20px}}
+  @media(prefers-reduced-motion:reduce){.runner-intro{display:none!important}}
+  .progress{position:fixed;z-index:30;top:0;left:0;width:100%;height:3px;background:#24271f}
+  .progress span{display:block;width:0;height:100%;background:var(--lime);transition:width .12s linear}
+  .topbar{position:sticky;z-index:20;top:0;display:flex;align-items:center;justify-content:space-between;gap:24px;min-height:68px;padding:0 clamp(18px,5vw,76px);border-bottom:1px solid rgba(255,255,255,.08);background:rgba(16,17,15,.9);backdrop-filter:blur(16px)}
+  .brand{display:flex;align-items:center;gap:11px;text-decoration:none;font-size:12px;font-weight:750;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap}
+  .brand-mark{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--lime);color:#10110f;font-weight:900}
+  .brand span:last-child{color:var(--muted)}
+  .nav{display:flex;align-items:center;gap:clamp(12px,2.2vw,28px);overflow:auto;scrollbar-width:none}
+  .nav::-webkit-scrollbar{display:none}
+  .nav a{padding:25px 0;color:var(--muted);font-size:12px;text-decoration:none;white-space:nowrap;transition:color .2s}
+  .nav a:hover,.nav a.current{color:var(--lime)}
+  .nav a.current{box-shadow:inset 0 -2px var(--lime)}
+  .nav-cta,.button{display:inline-flex;align-items:center;justify-content:center;gap:12px;padding:11px 16px;border:1px solid var(--lime);border-radius:3px;background:var(--lime);color:#10110f;text-decoration:none;font-size:12px;font-weight:800;cursor:pointer;transition:transform .2s,background .2s,border-color .2s}
+  .nav-cta:hover,.button:hover{transform:translateY(-2px);background:#e7ff91}
+  .button.secondary{border-color:var(--line);background:transparent;color:var(--ink)}
+  .button.secondary:hover{border-color:var(--lime);color:var(--lime);background:transparent}
+  .wrap{width:min(1120px,calc(100% - 48px));margin:0 auto}
+  .section{position:relative;padding:clamp(82px,12vw,150px) 0;border-bottom:1px solid rgba(255,255,255,.08);scroll-margin-top:65px}
+  .eyebrow{display:flex;align-items:center;gap:10px;margin:0 0 22px;color:var(--lime);font:10px var(--mono);letter-spacing:.15em;text-transform:uppercase}
+  .eyebrow:before{content:"";width:24px;height:1px;background:var(--lime)}
+  h1,h2,h3,p{margin-top:0}
+  h1,h2{font-weight:650;letter-spacing:-.06em}
+  h1{max-width:850px;margin-bottom:24px;font-size:clamp(48px,8vw,104px);line-height:.95}
+  h1 em{color:var(--lime);font-style:normal}
+  h2{max-width:780px;margin-bottom:22px;font-size:clamp(36px,5.4vw,68px);line-height:1}
+  h3{margin-bottom:10px;font-size:18px;letter-spacing:-.03em}
+  p{color:#c6c8be;line-height:1.7}
+  .lead{max-width:620px;color:#b7baae;font-size:clamp(17px,2vw,21px);line-height:1.6}
+  .hero{min-height:min(790px,calc(100svh - 68px));display:grid;align-items:center;padding:clamp(62px,8vw,105px) 0 64px;overflow:hidden}
+  .hero:before{position:absolute;z-index:0;top:5%;right:-20%;width:min(72vw,880px);aspect-ratio:1;border:1px solid #282d23;border-radius:50%;background:repeating-radial-gradient(circle at center,transparent 0 55px,rgba(215,250,85,.07) 56px 57px);content:"";pointer-events:none}
+  .hero:after{position:absolute;z-index:0;right:10%;top:21%;width:14px;height:14px;border-radius:50%;background:var(--lime);box-shadow:0 0 40px 10px rgba(215,250,85,.3);content:""}
+  .hero-content{position:relative;z-index:1}
+  .hero .reveal{transform:translateY(18px);transition-duration:.8s}
+  .hero .delay-1{transition-delay:.12s}.hero .delay-2{transition-delay:.24s}.hero .delay-3{transition-delay:.36s}
+  .hero .eyebrow{margin-bottom:28px}
+  .hero .lead{margin-bottom:30px}
+  .hero-buttons{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+  .hero-note{margin:20px 0 0;color:#818579;font:10px var(--mono);letter-spacing:.06em}
+  .hero-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));max-width:740px;margin-top:clamp(50px,9vw,100px);border-top:1px solid var(--line)}
+  .stat{padding:18px 18px 0 0}
+  .stat strong{display:block;color:var(--lime);font-size:clamp(35px,5vw,58px);font-weight:650;letter-spacing:-.07em;line-height:1}
+  .stat span{display:block;margin-top:9px;color:var(--muted);font:10px var(--mono);letter-spacing:.1em;text-transform:uppercase}
+  .content-grid{display:grid;grid-template-columns:.7fr 1.3fr;gap:clamp(40px,9vw,130px);align-items:start}
+  .section-intro{position:sticky;top:115px}
+  .section-intro p{max-width:360px;color:var(--muted)}
+  .cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .card{min-height:175px;padding:22px;border:1px solid var(--line);border-radius:5px;background:linear-gradient(145deg,rgba(255,255,255,.035),rgba(255,255,255,.008));transition:border-color .25s,transform .25s,background .25s}
+  .card:hover{transform:translateY(-4px);border-color:#73853f;background:#1d2118}
+  .card-kicker{display:block;margin-bottom:27px;color:var(--lime);font:10px var(--mono);letter-spacing:.08em}
+  .card p{margin-bottom:0;color:var(--muted);font-size:13px;line-height:1.55}
+  .clickable{cursor:pointer}
+  .click-hint{display:inline-flex;align-items:center;gap:7px;margin-top:16px;color:var(--lime);font:10px var(--mono);letter-spacing:.03em}
+  .click-hint:after{content:"↗";font-size:14px;transition:transform .2s}
+  .clickable:hover .click-hint:after{transform:translate(2px,-2px)}
+  .quote{margin-top:16px;padding:18px 20px;border-left:2px solid var(--lime);background:#191c16;color:#dcdfd4;font-size:14px;line-height:1.6}
+  .quote b{color:var(--lime)}
+  .decision{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;gap:12px;margin-top:38px}
+  .decision-node{min-height:165px;padding:19px;border:1px solid var(--line);background:#151713;transition:.25s}
+  .decision-node:hover{border-color:var(--lime);transform:translateY(-4px)}
+  .node-number{color:var(--lime);font:11px var(--mono)}
+  .node-title{display:block;margin:20px 0 7px;font-weight:700}
+  .node-copy{color:var(--muted);font-size:12px;line-height:1.5}
+  .decision-arrow{color:var(--lime);font-size:21px}
+  .branch-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+  .branch{padding:14px;border:1px solid #2b3025;background:#131510}
+  .branch strong{display:block;margin-bottom:5px;color:var(--lime);font-size:12px}
+  .branch:nth-child(3) strong{color:var(--orange)}
+  .branch span{color:var(--muted);font-size:11px;line-height:1.4}
+  .flow-caption{margin-top:18px;color:var(--muted);font-size:12px}
+  .flow-caption b{color:var(--ink)}
+  .guardrail{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:38px}
+  .guardrail-item{padding:19px;border:1px solid var(--line);background:#151713}
+  .guardrail-item strong{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px}
+  .guardrail-item strong span{color:var(--red)}
+  .guardrail-item p{margin:0;color:var(--muted);font-size:12px}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .scope-card{padding:24px;border:1px solid var(--line);background:#151713}
+  .scope-card h3{display:flex;align-items:center;gap:10px}
+  .scope-card h3 span{color:var(--lime)}
+  .scope-card.out h3 span{color:var(--orange)}
+  .scope-card ul{display:grid;gap:11px;padding:0;list-style:none}
+  .scope-card li{color:#c1c4b8;font-size:13px;line-height:1.5}
+  .scope-card li:before{margin-right:9px;color:var(--lime);content:"+"}
+  .scope-card.out li:before{color:var(--orange);content:"—"}
+  .timeline{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:32px}
+  .phase{position:relative;min-height:176px;padding:19px 15px 0 0;border-top:1px solid #626a54}
+  .phase:before{position:absolute;top:-5px;left:0;width:9px;height:9px;border-radius:50%;background:var(--lime);content:""}
+  .phase small{color:var(--lime);font:10px var(--mono);letter-spacing:.06em}
+  .phase h3{margin:16px 10px 8px 0;font-size:15px}
+  .phase p{margin:0;color:var(--muted);font-size:11px;line-height:1.5}
+  .gate{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}
+  .gate-item{padding:17px;border:1px solid var(--line);background:#151713}
+  .gate-item strong{display:block;margin-bottom:9px;color:var(--lime);font-size:12px}
+  .gate-item:nth-child(2) strong{color:var(--orange)}
+  .gate-item:nth-child(3) strong{color:var(--red)}
+  .gate-item span{color:var(--muted);font-size:11px;line-height:1.5}
+  .demo-layout{display:grid;grid-template-columns:.78fr 1.22fr;gap:18px;align-items:stretch;margin-top:28px}
+  .demo-controls,.console{border:1px solid var(--line);background:#151713}
+  .demo-controls{padding:21px}
+  .demo-controls>p{margin-bottom:18px;color:var(--muted);font-size:12px}
+  .scenario-list{display:grid;gap:8px}
+  .scenario{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:13px;border:1px solid #353a30;border-radius:3px;background:#191c16;text-align:left;cursor:pointer;transition:all .2s}
+  .scenario:hover,.scenario.active{border-color:var(--lime);background:#22271a}
+  .scenario strong{display:block;font-size:12px}
+  .scenario small{display:block;margin-top:4px;color:var(--muted);font-size:10px}
+  .scenario .arrow{color:var(--lime)}
+  .console{display:flex;min-height:390px;flex-direction:column;background:#0b0c0a}
+  .console-head{display:flex;justify-content:space-between;gap:10px;padding:13px 16px;border-bottom:1px solid #282c25;color:#969b8d;font:10px var(--mono)}
+  .live{color:var(--lime)}
+  .console-log{display:flex;flex:1;flex-direction:column;gap:10px;overflow:auto;padding:16px}
+  .console-placeholder{margin:auto;color:#797e72;font:11px var(--mono);text-align:center}
+  .message{max-width:90%;padding:12px;border:1px solid #353a30;background:#141711;font:11px/1.55 var(--mono);animation:pop .35s both}
+  .message.user{align-self:flex-end;border-color:#59643b;background:#1a1f14;color:#e9f3c9}
+  .message.system{align-self:flex-start;color:#d0d3c8}
+  .message .label{display:block;margin-bottom:5px;color:var(--lime);font-size:9px;letter-spacing:.08em}
+  .message.human .label{color:var(--orange)}
+  .console-form{display:flex;gap:8px;padding:12px;border-top:1px solid #282c25}
+  .console-form input{min-width:0;flex:1;padding:11px;border:1px solid #383d32;border-radius:3px;outline:none;background:#141611;color:var(--ink);font-size:12px}
+  .console-form input:focus{border-color:var(--lime)}
+  .console-form button{padding:0 14px;border:0;border-radius:3px;background:var(--lime);color:#10110f;font-size:11px;font-weight:800;cursor:pointer}
+  .demo-footnote{margin-top:12px;color:#777d70;font:10px/1.5 var(--mono)}
+  .live-editor{margin-top:28px;border:1px solid #41483a;border-radius:5px;background:#0b0d0a;box-shadow:0 20px 65px rgba(0,0,0,.25);overflow:hidden}
+  .editor-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 15px;border-bottom:1px solid #292e26;background:#141611}
+  .editor-file{display:flex;align-items:center;gap:10px;color:#d7dacc;font:10px var(--mono)}
+  .editor-file:before{content:"JS";display:grid;place-items:center;width:23px;height:23px;border:1px solid #57613d;border-radius:3px;color:var(--lime);font-size:9px}
+  .editor-state{display:flex;align-items:center;gap:7px;color:#92988a;font:9px var(--mono);letter-spacing:.08em}
+  .editor-state:before{width:7px;height:7px;border-radius:50%;background:#74796c;content:""}
+  .editor-state.typing{color:var(--orange)}
+  .editor-state.typing:before{background:var(--orange);animation:blink .7s infinite}
+  .editor-state.running,.editor-state.done{color:var(--lime)}
+  .editor-state.running:before,.editor-state.done:before{background:var(--lime);box-shadow:0 0 10px #d7fa5570}
+  .editor-replay{padding:7px 10px;border:1px solid #42483a;border-radius:3px;background:transparent;color:#d6d9cd;font:9px var(--mono);cursor:pointer}
+  .editor-replay:hover{border-color:var(--lime);color:var(--lime)}
+  .editor-code{height:clamp(210px,31vw,310px);overflow:auto;padding:14px 0;color:#d8ddcd;font:12px/1.7 var(--mono);scrollbar-color:#404637 #0b0d0a}
+  .code-row{display:grid;grid-template-columns:46px 1fr;min-height:20px;padding-right:18px}
+  .code-row.active{background:rgba(215,250,85,.1);box-shadow:inset 2px 0 var(--lime)}
+  .line-number{padding-right:13px;color:#60675b;text-align:right;user-select:none}
+  .code-row.active .line-number{color:var(--lime)}
+  .code-row code{white-space:pre}
+  .editor-caret{display:inline-block;width:7px;height:14px;margin-left:1px;vertical-align:-2px;background:var(--lime);animation:blink .8s steps(2,start) infinite}
+  .editor-statusbar{display:flex;justify-content:space-between;gap:12px;padding:8px 14px;border-top:1px solid #292e26;color:#7f8678;font:9px var(--mono)}
+  .editor-output{color:var(--lime)}
+  @keyframes blink{to{opacity:0}}
+  @media(max-width:600px){
+    .editor-code{height:260px;font-size:10px}
+    .code-row{grid-template-columns:36px 1fr}
+    .editor-head{gap:7px;padding:10px}
+    .editor-state{font-size:8px}
+    .editor-replay{font-size:8px}
+  }
+  .closing{padding-bottom:100px}
+  .closing-box{position:relative;overflow:hidden;padding:clamp(28px,6vw,72px);border:1px solid #414a32;background:radial-gradient(circle at 100% 0,rgba(215,250,85,.12),transparent 45%),#151813}
+  .closing-box h2{max-width:700px}
+  .closing-box p{max-width:590px;color:var(--muted)}
+  .closing-box .button{margin-top:12px}
+  .footer{display:flex;justify-content:space-between;gap:18px;padding:23px 0;color:#777d72;font:10px var(--mono)}
+  .reveal{opacity:0;transform:translateY(20px);transition:opacity .65s ease,transform .65s cubic-bezier(.2,.7,.2,1)}
+  .reveal.visible{opacity:1;transform:translateY(0)}
+  .delay-1{transition-delay:.08s}.delay-2{transition-delay:.16s}.delay-3{transition-delay:.24s}
+  @keyframes pop{from{opacity:0;transform:translateY(8px) scale(.99)}to{opacity:1;transform:none}}
+  @keyframes dialog-in{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+  dialog{width:min(650px,calc(100% - 32px));max-height:min(82vh,780px);padding:0;border:1px solid #48513a;border-radius:6px;background:#141611;color:var(--ink);box-shadow:0 30px 120px #000a}
+  dialog[open]{animation:dialog-in .24s cubic-bezier(.2,.7,.2,1) both}
+  dialog::backdrop{background:rgba(0,0,0,.76);backdrop-filter:blur(5px)}
+  .dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:22px 24px;border-bottom:1px solid var(--line)}
+  .dialog-kicker{margin-bottom:8px;color:var(--lime);font:10px var(--mono);letter-spacing:.1em;text-transform:uppercase}
+  .dialog-head h3{margin:0;font-size:21px}
+  .dialog-close{display:grid;place-items:center;width:32px;height:32px;border:1px solid var(--line);border-radius:50%;background:transparent;color:var(--muted);font-size:18px;cursor:pointer}
+  .dialog-close:hover{border-color:var(--lime);color:var(--lime)}
+  .dialog-body{padding:22px 24px 26px}
+  .dialog-body p{margin-bottom:18px;color:#c6c8be;font-size:14px}
+  .code-label{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;color:#8e9583;font:9px var(--mono);letter-spacing:.09em;text-transform:uppercase}
+  pre{max-height:330px;overflow:auto;margin:0;padding:17px;border:1px solid #30362b;border-radius:4px;background:#0b0d0a;color:#dbefac;font:12px/1.65 var(--mono);white-space:pre-wrap;word-break:break-word}
+  .copy-code{margin-top:12px;padding:9px 12px;border:1px solid #444b39;border-radius:3px;background:transparent;color:var(--lime);font-size:11px;cursor:pointer}
+  .copy-code:hover{border-color:var(--lime)}
+  .toast{position:fixed;z-index:50;right:20px;bottom:20px;padding:12px 16px;border:1px solid var(--lime);border-radius:4px;background:#171a13;color:var(--lime);font:11px var(--mono);opacity:0;transform:translateY(8px);pointer-events:none;transition:.2s}
+  .toast.show{opacity:1;transform:none}
+  :focus-visible{outline:2px solid var(--lime);outline-offset:4px}
+  @media(max-width:850px){
+    .topbar{flex-wrap:wrap;gap:0 15px;padding-top:10px;padding-bottom:10px}
+    .nav{order:3;width:100%;justify-content:flex-start}
+    .nav a{padding:13px 0}
+    .nav-cta{margin-left:auto}
+    .content-grid{grid-template-columns:1fr;gap:25px}
+    .section-intro{position:static}
+    .section-intro p{max-width:620px}
+    .demo-layout{grid-template-columns:1fr}
+    .console{min-height:340px}
+  }
+  @media(max-width:600px){
+    .wrap{width:min(100% - 36px,1120px)}
+    .topbar{padding-right:18px;padding-left:18px}
+    .brand{font-size:10px}
+    .nav-cta{padding:9px 11px;font-size:10px}
+    .hero{min-height:auto;padding:75px 0 55px}
+    .hero:before{top:18%;right:-70%;width:150vw}
+    h1{font-size:clamp(48px,15vw,75px)}
+    .hero-stats{gap:10px}
+    .stat{padding-right:4px}
+    .stat strong{font-size:38px}
+    .stat span{font-size:8px}
+    .section{padding:80px 0}
+    .cards,.split{grid-template-columns:1fr}
+    .card{min-height:0}
+    .card-kicker{margin-bottom:18px}
+    .decision{grid-template-columns:1fr;gap:7px}
+    .decision-node{min-height:0}
+    .decision-arrow{justify-self:center;transform:rotate(90deg)}
+    .branch-grid{grid-template-columns:1fr}
+    .guardrail,.gate{grid-template-columns:1fr}
+    .timeline{grid-template-columns:1fr 1fr;gap:0 12px}
+    .phase{min-height:170px}
+    .footer{flex-direction:column}
+    .console-form button{padding:0 10px}
+  }
+  @media(prefers-reduced-motion:reduce){
+    *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+    .reveal{opacity:1;transform:none}
+    .runner-intro{display:none!important}
+  }
+</style>
+<script>
+  (function(){
+    var introKey='sabor-express-runner-intro-v4';
+    if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    try{
+      if(window.sessionStorage.getItem(introKey))return;
+      window.sessionStorage.setItem(introKey,'shown');
+    }catch(error){
+      console.warn('Não foi possível salvar o estado da animação nesta sessão.',error);
+    }
+    document.documentElement.classList.add('show-runner-intro');
+  })();
+</script>
+</head>
+<body>
+<div class="runner-intro" id="runnerIntro" aria-hidden="true">
+  <div class="runner-track" id="runnerTrack">
+    <span class="runner-dust"></span><span class="runner-dust"></span><span class="runner-dust"></span>
+    <svg class="runner-character" viewBox="0 0 100 120" role="presentation">
+      <g class="runner-limb runner-leg-back" fill="none" stroke="#b7baae" stroke-linecap="round" stroke-linejoin="round" stroke-width="8">
+        <path d="M45 68 29 82 23 96"/>
+        <path d="m23 96-11 4"/>
+      </g>
+      <g class="runner-limb runner-arm-back" fill="none" stroke="#d7fa55" stroke-linecap="round" stroke-linejoin="round" stroke-width="7">
+        <path d="m43 44-12 10-8-8"/>
+      </g>
+      <path d="M43 39q12-7 22 2l-2 27q-11 8-24-1l1-19z" fill="#d7fa55"/>
+      <g class="runner-limb runner-leg-front" fill="none" stroke="#f2f1e9" stroke-linecap="round" stroke-linejoin="round" stroke-width="8">
+        <path d="m48 68 15 12 13-2"/>
+        <path d="m76 78 11 5"/>
+      </g>
+      <g class="runner-limb runner-arm-front" fill="none" stroke="#d7fa55" stroke-linecap="round" stroke-linejoin="round" stroke-width="7">
+        <path d="m59 43 13 10 8-8"/>
+      </g>
+      <circle cx="58" cy="23" r="13" fill="#f0c7a2"/>
+      <path d="M45 23q0-14 13-14 11 0 14 11-8-3-14-7-4 7-13 10" fill="#25271f"/>
+      <circle class="runner-eye" cx="63" cy="23" r="1.5"/>
+      <path d="m64 30 4-1" fill="none" stroke="#9a6254" stroke-linecap="round" stroke-width="1.5"/>
+    </svg>
+  </div>
+</div>
+<script>
+  (function(){
+    var intro=document.getElementById('runnerIntro');
+    var runner=document.getElementById('runnerTrack');
+    if(!intro||!runner)return;
+    runner.addEventListener('animationend',function(event){
+      if(event.target!==runner||event.animationName!=='runner-cross')return;
+      intro.remove();
+      document.documentElement.classList.remove('show-runner-intro');
+    },{once:true});
+  })();
+</script>
+<div class="progress" aria-hidden="true"><span id="progressBar"></span></div>
+<header class="topbar">
+  <a class="brand" href="#inicio" aria-label="Sabor Express, início">
+    <span class="brand-mark">S</span><span>SABOR EXPRESS <span>· CASE DE IA</span></span>
+  </a>
+  <nav class="nav" aria-label="Seções do case">
+    <a href="#problema">O desafio</a><a href="#decisao">A solução</a><a href="#plano">Plano</a><a href="#demo">Demonstração</a>
+  </nav>
+  <a class="nav-cta" href="#demo">Testar protótipo <span aria-hidden="true">↘</span></a>
+</header>
+
+<main>
+  <section class="hero section" id="inicio">
+    <div class="wrap hero-content">
+      <p class="eyebrow reveal">Case prático · Customer Success + IA Solutions</p>
+      <h1 class="reveal delay-1">Escalar o atendimento.<br><em>Sem robotizar</em> o cuidado.</h1>
+      <p class="lead reveal delay-2">Uma proposta para a Sabor Express atender milhares de conversas com agilidade — e saber a hora certa de chamar uma pessoa.</p>
+      <div class="hero-buttons reveal delay-3">
+        <a class="button" href="#decisao">Veja como funciona <span aria-hidden="true">↓</span></a>
+        <a class="button secondary" href="#demo">Pule para a demo <span aria-hidden="true">↗</span></a>
+      </div>
+      <p class="hero-note reveal delay-3">// Passe o mouse nos cartões ou clique neles para ver a lógica e o código.</p>
+      <div class="hero-stats reveal delay-3" aria-label="Números do desafio">
+        <div class="stat"><strong>42</strong><span>unidades</span></div>
+        <div class="stat"><strong>3 mil+</strong><span>mensagens / dia</span></div>
+        <div class="stat"><strong>60</strong><span>dias para o piloto</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="problema">
+    <div class="wrap content-grid">
+      <div class="section-intro reveal">
+        <p class="eyebrow">01 / O problema</p>
+        <h2>Mais mensagens não podem significar menos cuidado.</h2>
+        <p>O desafio não é “colocar um chatbot”. É tirar o peso do repetitivo sem esconder a equipe humana quando uma conversa precisa de atenção.</p>
+      </div>
+      <div>
+        <div class="cards">
+          <article class="card clickable reveal" tabindex="0" role="button" data-explain="volume" aria-label="Ver explicação e código do volume de atendimento">
+            <span class="card-kicker">SINAL 01 · ESCALA</span><h3>Fila que cresce mais rápido que a equipe</h3>
+            <p>42 unidades recebem mais de 3 mil mensagens por dia. Horários de pico pressionam a experiência.</p><span class="click-hint">Ver lógica + código</span>
+          </article>
+          <article class="card clickable reveal delay-1" tabindex="0" role="button" data-explain="historico" aria-label="Ver explicação e código sobre o histórico do assistente">
+            <span class="card-kicker">SINAL 02 · CONFIANÇA</span><h3>Já houve uma tentativa frustrada</h3>
+            <p>Antes de automatizar, precisamos entender o que fez o assistente anterior falhar.</p><span class="click-hint">Ver lógica + código</span>
+          </article>
+          <article class="card clickable reveal delay-2" tabindex="0" role="button" data-explain="diagnostico" aria-label="Ver explicação e código da etapa de diagnóstico">
+            <span class="card-kicker">PRIMEIRA DECISÃO</span><h3>Diagnosticar antes de prometer</h3>
+            <p>Entrevistar operação, analisar conversas e medir a linha de base na primeira semana.</p><span class="click-hint">Ver lógica + código</span>
+          </article>
+          <article class="card clickable reveal delay-3" tabindex="0" role="button" data-explain="medicao" aria-label="Ver explicação e código das métricas">
+            <span class="card-kicker">COMO SABER SE FUNCIONOU</span><h3>Medir o que muda para o cliente</h3>
+            <p>Tempo de espera, resolução, satisfação e taxa de transferência — não só volume automatizado.</p><span class="click-hint">Ver lógica + código</span>
+          </article>
+        </div>
+        <div class="quote reveal"><b>Princípio:</b> automatizar a tarefa repetitiva, não a relação com o cliente.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="decisao">
+    <div class="wrap">
+      <p class="eyebrow reveal">02 / A solução</p>
+      <h2 class="reveal">Regras primeiro. IA com limites. Humano no controle.</h2>
+      <p class="lead reveal">A mensagem percorre uma triagem simples e auditável. Clique em cada etapa para entender a decisão e ver uma implementação ilustrativa.</p>
+      <div class="decision">
+        <article class="decision-node clickable reveal" tabindex="0" role="button" data-explain="entrada" aria-label="Explicação da entrada WhatsApp">
+          <span class="node-number">01 / RECEBER</span><span class="node-title">WhatsApp</span><span class="node-copy">Mensagem chega via provedor oficial e webhook.</span><span class="click-hint">Código</span>
+        </article>
+        <span class="decision-arrow" aria-hidden="true">→</span>
+        <article class="decision-node clickable reveal delay-1" tabindex="0" role="button" data-explain="guard" aria-label="Explicação das validações e proteção contra duplicatas">
+          <span class="node-number">02 / VALIDAR</span><span class="node-title">Guard + contexto</span><span class="node-copy">Valida origem, evita duplicidade e prepara a conversa.</span><span class="click-hint">Código</span>
+        </article>
+        <span class="decision-arrow" aria-hidden="true">→</span>
+        <article class="decision-node clickable reveal delay-2" tabindex="0" role="button" data-explain="motor" aria-label="Explicação do motor de decisão">
+          <span class="node-number">03 / DECIDIR</span><span class="node-title">Motor de decisão</span><span class="node-copy">Regras de negócio determinam a próxima ação; IA não decide tudo.</span><span class="click-hint">Código</span>
+        </article>
+      </div>
+      <div class="branch-grid reveal delay-3">
+        <div class="branch clickable" tabindex="0" role="button" data-explain="faq"><strong>↗ FAQ</strong><span>Cardápio, horários, endereço e informações aprovadas.</span></div>
+        <div class="branch clickable" tabindex="0" role="button" data-explain="pedido"><strong>↗ Status do pedido</strong><span>Consulta somente leitura à API de pedidos.</span></div>
+        <div class="branch clickable" tabindex="0" role="button" data-explain="humano"><strong>↗ Atendimento humano</strong><span>Casos sensíveis, incerteza ou falha técnica.</span></div>
+      </div>
+      <p class="flow-caption reveal"><b>Em paralelo:</b> eventos para métricas e sincronização do histórico no RD Station. Clique em cada caminho para ver o trecho de código.</p>
+      <div class="guardrail">
+        <article class="guardrail-item clickable reveal" tabindex="0" role="button" data-explain="sensivel">
+          <strong><span>●</span> Assunto sensível? Transfere.</strong><p>Alergia, saúde, reclamações e cancelamentos não viram resposta automática.</p><span class="click-hint">Entender regra</span>
+        </article>
+        <article class="guardrail-item clickable reveal delay-1" tabindex="0" role="button" data-explain="fallback">
+          <strong><span>●</span> Sem confiança ou sem API? Transfere.</strong><p>Erro ou ambiguidade não termina em chute: segue com contexto para uma pessoa.</p><span class="click-hint">Entender fallback</span>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="escopo">
+    <div class="wrap content-grid">
+      <div class="section-intro reveal">
+        <p class="eyebrow">03 / Escopo com intenção</p>
+        <h2>Um MVP que sabe o que não fazer.</h2>
+        <p>Limitar ações é uma decisão de produto e de segurança. A primeira versão ajuda, consulta e encaminha — sem assumir riscos desnecessários.</p>
+      </div>
+      <div class="split">
+        <article class="scope-card reveal">
+          <h3><span>✓</span> Entra no piloto</h3>
+          <ul><li>Triagem de intenções e FAQ aprovado</li><li>Consulta de status do pedido em modo leitura</li><li>Transferência com resumo da conversa</li><li>Registro de eventos e sincronização de histórico</li></ul>
+          <span class="click-hint clickable" tabindex="0" role="button" data-explain="mvp">Como isso vira uma regra?</span>
+        </article>
+        <article class="scope-card out reveal delay-1">
+          <h3><span>↗</span> Fica fora no início</h3>
+          <ul><li>Criar, alterar ou cancelar pedidos</li><li>Pagamentos, estornos e dados de cartão</li><li>Responder questões de alergia ou saúde</li><li>Campanhas em massa ou novos canais</li></ul>
+          <span class="click-hint clickable" tabindex="0" role="button" data-explain="limites">Por que limitar?</span>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="plano">
+    <div class="wrap">
+      <p class="eyebrow reveal">04 / Plano de execução</p>
+      <h2 class="reveal">60 dias. Quatro etapas. Uma decisão baseada em evidência.</h2>
+      <p class="lead reveal">No Dia 21, o Conselho vê viabilidade e protótipo — não uma promessa de produção.</p>
+      <div class="timeline">
+        <article class="phase clickable reveal" tabindex="0" role="button" data-explain="fase1"><small>DIAS 01—07</small><h3>Ouvir &amp; diagnosticar</h3><p>Entrevistas, amostra de conversas, matriz de intenções e linha de base.</p><span class="click-hint">Entregáveis</span></article>
+        <article class="phase clickable reveal delay-1" tabindex="0" role="button" data-explain="fase2"><small>DIAS 08—14</small><h3>Validar integrações</h3><p>Testar WhatsApp, API de pedidos, RD Station e ambiente de homologação.</p><span class="click-hint">Entregáveis</span></article>
+        <article class="phase clickable reveal delay-2" tabindex="0" role="button" data-explain="fase3"><small>DIAS 15—35</small><h3>Prototipar &amp; observar</h3><p>Demo para o Conselho no Dia 21; depois, modo sombra e treinamento.</p><span class="click-hint">Entregáveis</span></article>
+        <article class="phase clickable reveal delay-3" tabindex="0" role="button" data-explain="fase4"><small>DIAS 36—60</small><h3>Pilotar &amp; decidir</h3><p>3 unidades ao vivo; expandir gradualmente somente se os critérios forem atingidos.</p><span class="click-hint">Entregáveis</span></article>
+      </div>
+      <div class="gate">
+        <div class="gate-item clickable reveal" tabindex="0" role="button" data-explain="avancar"><strong>SE OS SINAIS FOREM BONS → AVANÇAR</strong><span>Qualidade validada, nenhuma falha crítica, melhora no tempo de espera e adesão das equipes.</span></div>
+        <div class="gate-item clickable reveal delay-1" tabindex="0" role="button" data-explain="pausar"><strong>SE HOUVER DESVIO → PAUSAR</strong><span>Investigar erros, indisponibilidade ou qualidade abaixo do limite combinado.</span></div>
+        <div class="gate-item clickable reveal delay-2" tabindex="0" role="button" data-explain="reverter"><strong>SE HOUVER RISCO → REVERTER</strong><span>Kill-switch e retorno ao fluxo humano diante de incidente ou queda de experiência.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="demo">
+    <div class="wrap">
+      <p class="eyebrow reveal">05 / Prove a ideia</p>
+      <h2 class="reveal">Uma demonstração que mostra também quando a IA para.</h2>
+      <p class="lead reveal">Veja o código sendo escrito e executado. A função abaixo é a mesma que classifica as mensagens nesta demonstração.</p>
+      <div class="live-editor reveal" id="liveEditor">
+        <div class="editor-head">
+          <span class="editor-file">triagem_atendimento.js</span>
+          <span class="editor-state" id="editorState">AGUARDANDO DEMONSTRAÇÃO</span>
+          <button class="editor-replay" id="replayCode" type="button">↻ REINICIAR</button>
+        </div>
+        <div class="editor-code" id="editorCode" aria-label="Código JavaScript sendo digitado automaticamente" aria-live="off"></div>
+        <div class="editor-statusbar"><span id="editorMessage">Quando esta área aparecer, o código começa a ser escrito.</span><span class="editor-output" id="editorOutput">OUTPUT · —</span></div>
+      </div>
+      <p class="demo-footnote reveal">SIMULAÇÃO LOCAL · O exemplo não acessa WhatsApp, serviços externos nem dados reais.</p>
+      <div class="demo-layout reveal">
+        <div class="demo-controls">
+          <p>Teste você também:</p>
+          <div class="scenario-list">
+            <button class="scenario" type="button" data-message="Qual o status do meu pedido #1002?"><span><strong>📦 Pedido</strong><small>Consulta de status</small></span><span class="arrow">↗</span></button>
+            <button class="scenario" type="button" data-message="Qual o horário de funcionamento hoje?"><span><strong>☀ FAQ</strong><small>Resposta aprovada</small></span><span class="arrow">↗</span></button>
+            <button class="scenario" type="button" data-message="Tenho alergia grave a amendoim."><span><strong>⚠ Assunto sensível</strong><small>Transferência imediata</small></span><span class="arrow">↗</span></button>
+            <button class="scenario" type="button" data-message="A API está com erro 503."><span><strong>⟳ Falha técnica</strong><small>Fallback humano</small></span><span class="arrow">↗</span></button>
+          </div>
+          <p class="demo-footnote">DICA: teste também “quero cancelar” ou escreva uma pergunta fora do escopo.</p>
+        </div>
+        <div class="console" aria-live="polite">
+          <div class="console-head"><span>sabor-express / triagem-demo</span><span class="live">● SIMULAÇÃO LOCAL</span></div>
+          <div class="console-log" id="consoleLog"><p class="console-placeholder">Aguardando mensagem…<br>Escolha um cenário para ver a decisão.</p></div>
+          <form class="console-form" id="messageForm">
+            <input id="messageInput" type="text" placeholder="Escreva uma mensagem…" autocomplete="off" aria-label="Escreva uma mensagem para o simulador">
+            <button type="submit">Testar ↗</button>
+          </form>
+        </div>
+      </div>
+      <button type="button" class="button secondary clickable reveal" style="margin-top:16px" data-explain="demo-code">Entenda a lógica da demonstração <span aria-hidden="true">⌘</span></button>
+    </div>
+  </section>
+
+  <section class="section closing" id="resultado">
+    <div class="wrap">
+      <div class="closing-box reveal">
+        <p class="eyebrow">06 / Resultado esperado</p>
+        <h2>Mais velocidade para o simples. Mais atenção para o importante.</h2>
+        <p>O sucesso não é “automatizar tudo”. É oferecer respostas rápidas para dúvidas recorrentes, preservar a confiança e dar à equipe melhores condições de resolver o que exige cuidado.</p>
+        <p><strong style="color:var(--ink)">Próximo passo:</strong> kickoff com Operações e TI, validação das premissas e definição conjunta da linha de base.</p>
+        <a class="button" href="#inicio">Voltar ao início ↑</a>
+      </div>
+      <footer class="footer"><span>CASE PRÁTICO · CUSTOMER SUCCESS &amp; IA SOLUTIONS</span><span>Conceito de solução · protótipo demonstrativo</span></footer>
+    </div>
+  </section>
+</main>
+
+<dialog id="explainDialog" aria-labelledby="dialogTitle">
+  <div class="dialog-head">
+    <div><p class="dialog-kicker" id="dialogKicker">LÓGICA DA SOLUÇÃO</p><h3 id="dialogTitle">Explicação</h3></div>
+    <button class="dialog-close" type="button" aria-label="Fechar explicação">×</button>
+  </div>
+  <div class="dialog-body">
+    <p id="dialogDescription"></p>
+    <div class="code-label"><span id="codeLabel">Exemplo ilustrativo</span><span>PYTHON · PSEUDOCÓDIGO</span></div>
+    <pre><code id="dialogCode"></code></pre>
+    <button class="copy-code" type="button">Copiar código</button>
+  </div>
+</dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+  var explanations = {
+    volume:{title:"O volume é o contexto, não a meta",description:"O número de mensagens ajuda a dimensionar o problema, mas não diz sozinho o que automatizar. A primeira entrega é separar intenções recorrentes das conversas que precisam de cuidado.",code:"volume_diario = 3000\\nintencoes = analisar_amostra(conversas_dos_ultimos_30_dias)\\n\\nautomatizaveis = priorizar(\\n    intencoes,\\n    criterio=(frequencia, risco, clareza)\\n)"},
+    historico:{title:"Aprender com a tentativa anterior",description:"Entrevistas e análise de conversas revelam onde a experiência quebrou: resposta errada, falta de contexto, dificuldade para falar com uma pessoa ou integrações frágeis.",code:"causas = classificar_falhas(\\n    entrevistas=equipe_e_franquias,\\n    conversas=amostra_de_300,\\n    periodo_dias=30\\n)\\n\\nrequisitos = transformar_em_guardrails(causas)"},
+    diagnostico:{title:"Diagnóstico antes da automação",description:"Na semana 1, medir o atendimento atual e validar as premissas. Isso cria uma linha de base para comparar o piloto, em vez de atribuir resultados sem evidência.",code:"linha_de_base = medir(\\n    tempo_primeira_resposta,\\n    taxa_resolucao,\\n    csat,\\n    volume_por_intencao\\n)"},
+    medicao:{title:"Métricas ligadas à experiência",description:"Acompanhar resolução sem recontato, tempo de resposta, satisfação e transferências corretas. Taxa de automação é uma métrica de apoio, nunca o objetivo isolado.",code:"kpis = {\\n    'resolucao_sem_recontato': medir_resolucao(),\\n    'tempo_primeira_resposta': medir_tempo(),\\n    'csat': coletar_satisfacao(),\\n    'transferencia_correta': auditar_escalonamentos()\\n}"},
+    entrada:{title:"Receber uma mensagem com segurança",description:"O webhook do provedor deve validar a origem e normalizar o evento antes de qualquer processamento. Credenciais ficam fora do código-fonte.",code:"def receber(evento, assinatura, segredo):\\n    validar_assinatura(evento, assinatura, segredo)\\n    mensagem = normalizar(evento)\\n    return processar(mensagem)"},
+    guard:{title:"Validar e evitar duplicidade",description:"Webhooks podem ser repetidos. Uma chave idempotente evita responder duas vezes à mesma mensagem; o contexto dá continuidade sem expor dados desnecessários.",code:"def validar(mensagem):\\n    if mensagem.id in eventos_processados:\\n        return ignorar_repeticao()\\n\\n    eventos_processados.add(mensagem.id)\\n    return carregar_contexto_minimo(mensagem)"},
+    motor:{title:"As regras vêm antes do modelo",description:"Uma camada determinística cuida dos casos de risco e dos caminhos permitidos. O modelo pode classificar ou redigir dentro do escopo, mas não executa ações fora das regras.",code:"def decidir(mensagem):\\n    if assunto_sensivel(mensagem):\\n        return transferir(motivo='sensivel')\\n\\n    intencao = classificar(mensagem)\\n    if intencao not in intencoes_permitidas:\\n        return transferir(motivo='fora_do_escopo')\\n\\n    return executar_fluxo_aprovado(intencao)"},
+    faq:{title:"FAQ com conteúdo aprovado",description:"O bot responde apenas a informações revisadas pela operação, como horário e cardápio. Se a unidade não tiver conteúdo confiável ou a intenção não estiver clara, encaminha.",code:"if intencao == 'horario':\\n    return responder(conteudo_aprovado.unidade.horario)\\nelif intencao == 'cardapio':\\n    return enviar_link(conteudo_aprovado.unidade.cardapio)\\nelse:\\n    return transferir(motivo='sem_conteudo_confiavel')"},
+    pedido:{title:"Consulta de pedido somente leitura",description:"A IA pode consultar o status usando uma API com permissão mínima. Nesta proposta, criar, editar ou cancelar pedidos não faz parte do MVP.",code:"def consultar_status(numero_pedido):\\n    resposta = pedidos_api.get(\\n        f'/pedidos/{numero_pedido}',\\n        timeout=3\\n    )\\n    validar_resposta(resposta)\\n    return formatar_status(resposta.status)"},
+    humano:{title:"Transferir com contexto, não com um recomeço",description:"O atendente recebe a conversa, o motivo da transferência e os dados estritamente necessários. O cliente não precisa repetir o que já explicou.",code:"transferir_para_humano(\\n    conversa_id=mensagem.conversa_id,\\n    resumo=resumir_historico(),\\n    motivo=motivo,\\n    prioridade=prioridade\\n)"},
+    sensivel:{title:"Saúde e alergia: não improvisar",description:"Mensagens sobre alergia, saúde ou reação adversa vão diretamente para atendimento humano. A simulação não tenta responder nem inferir segurança alimentar.",code:"ASSUNTOS_SENSIVEIS = ('alergia', 'saude', 'passou mal')\\n\\nif contem_termo(mensagem, ASSUNTOS_SENSIVEIS):\\n    transferir_para_humano(\\n        prioridade='alta',\\n        motivo='assunto_sensivel'\\n    )"},
+    fallback:{title:"Falha não vira resposta inventada",description:"Timeout, erro da API, baixa confiança ou intenção ambígua acionam o fallback para a equipe humana. O caminho de contingência também deve ser testado.",code:"try:\\n    resultado = consultar_servico(timeout=3)\\nexcept ErroIntegracao:\\n    return transferir(motivo='indisponibilidade')\\n\\nif resultado.confianca < LIMIAR:\\n    return transferir(motivo='incerteza')"},
+    mvp:{title:"Um MVP pequeno e útil",description:"Começar com triagem, FAQ confiável, consulta de status e transferência. Cada funcionalidade só entra após validação técnica e operacional.",code:"ESCOPO_MVP = {\\n    'triagem', 'faq_aprovado',\\n    'consulta_status_leitura',\\n    'transferencia_com_contexto',\\n    'eventos_de_medicao'\\n}"},
+    limites:{title:"O que fica fora protege o cliente",description:"Ações transacionais e tópicos sensíveis podem gerar impacto real. Excluí-los do piloto reduz risco enquanto as regras, integrações e controles amadurecem.",code:"ACOES_BLOQUEADAS_NO_PILOTO = {\\n    'criar_pedido', 'alterar_pedido',\\n    'cancelar_pedido', 'processar_pagamento',\\n    'orientar_sobre_alergia'\\n}\\n\\nassert acao not in ACOES_BLOQUEADAS_NO_PILOTO"},
+    fase1:{title:"Dias 1–7 · Diagnóstico",description:"Entrevistas, análise de amostra, mapa de intenções e linha de base. Entregável: matriz priorizada e premissas validadas.",code:"entregaveis = [\\n    mapa_de_intencoes,\\n    linha_de_base,\\n    lista_de_premissas_validadas,\\n    escopo_mvp\\n]"},
+    fase2:{title:"Dias 8–14 · Validação técnica",description:"Confirmar acesso, autenticação, limites, ambiente de testes e qualidade dos dados das integrações antes de construir o fluxo.",code:"integracoes = ['whatsapp', 'pedidos', 'rd_station']\\n\\nfor sistema in integracoes:\\n    validar_acesso(sistema)\\n    testar_homologacao(sistema)\\n    registrar_bloqueios(sistema)"},
+    fase3:{title:"Dias 15–35 · Protótipo e modo sombra",description:"Demonstrar o protótipo ao Conselho no Dia 21. Depois, comparar as sugestões do sistema com decisões humanas sem responder diretamente ao cliente.",code:"for conversa in amostra_ao_vivo:\\n    sugestao = motor.classificar(conversa)\\n    decisao_humana = registrar_atendimento(conversa)\\n    comparar(sugestao, decisao_humana)"},
+    fase4:{title:"Dias 36–60 · Piloto controlado",description:"Lançar em três unidades representativas, com duas unidades de controle quando possível. Expandir gradualmente apenas após revisão dos critérios.",code:"unidades_piloto = selecionar_unidades(\\n    perfis=('alto_volume', 'medio_volume', 'baixo_volume')\\n)\\n\\nif criterios_aprovados(resultados):\\n    iniciar_expansao_gradual()"},
+    avancar:{title:"Decisão de avanço",description:"A expansão exige qualidade, segurança, adesão e melhoria mensurável frente à linha de base. Os limites exatos são acordados com a operação.",code:"pode_avancar = (\\n    zero_incidentes_criticos\\n    and qualidade >= meta_acordada\\n    and csat >= linha_de_base.csat\\n    and equipe_aprovou\\n)"},
+    pausar:{title:"Pausar também é um resultado válido",description:"Definir critérios de pausa antes do piloto reduz pressão para manter uma automação ruim. Corrige-se a causa e retesta-se antes de retomar.",code:"if erro_critico or qualidade < limite_diario:\\n    pausar_automacao()\\n    notificar_responsavel()\\n    abrir_plano_de_correcao()"},
+    reverter:{title:"Plano de reversão e kill-switch",description:"Uma rota simples desativa respostas automáticas e devolve o canal à equipe humana se houver incidente ou degradação persistente.",code:"if incidente_confirmado or queda_de_experiencia:\\n    kill_switch(automacao=True)\\n    rotear_para_fila_humana()\\n    iniciar_resposta_a_incidente()"},
+    "demo-code":{title:"A lógica executada nesta demonstração",description:"O protótipo é uma simulação frontend com regras simples por palavras-chave. Não conecta a WhatsApp, API de pedidos, RD Station nem a um modelo real.",code:"function classificar(mensagem) {\\n  const texto = mensagem.toLowerCase();\\n  if (/alergia|saúde|passou mal/.test(texto)) return 'humano';\\n  if (/503|falha|erro/.test(texto)) return 'fallback';\\n  if (/pedido|status|#1002/.test(texto)) return 'pedido';\\n  if (/horário|cardápio|aberto/.test(texto)) return 'faq';\\n  return 'incerto';\\n}"}
+  };
+
+  var dialog=document.getElementById('explainDialog');
+  var dialogTitle=document.getElementById('dialogTitle');
+  var dialogDescription=document.getElementById('dialogDescription');
+  var dialogCode=document.getElementById('dialogCode');
+  var toastTimer;
+  function showToast(message){
+    var toast=document.getElementById('toast');
+    toast.textContent=message;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer=setTimeout(function(){toast.classList.remove('show');},1800);
+  }
+  function openExplanation(key){
+    var item=explanations[key];
+    if(!item)return;
+    dialogTitle.textContent=item.title;
+    dialogDescription.textContent=item.description;
+    dialogCode.textContent=item.code.replace(/\\n/g,"\n");
+    dialog.showModal();
+  }
+  document.querySelectorAll('[data-explain]').forEach(function(element){
+    element.addEventListener('click',function(){openExplanation(element.dataset.explain);});
+    if(element.getAttribute('role')==='button'){
+      element.addEventListener('keydown',function(event){
+        if(event.key==='Enter'||event.key===' '){event.preventDefault();openExplanation(element.dataset.explain);}
+      });
+    }
+  });
+  dialog.querySelector('.dialog-close').addEventListener('click',function(){dialog.close();});
+  dialog.addEventListener('click',function(event){
+    if(event.target===dialog)dialog.close();
+  });
+  dialog.querySelector('.copy-code').addEventListener('click',function(){
+    var text=dialogCode.textContent;
+    if(navigator.clipboard&&window.isSecureContext){
+      navigator.clipboard.writeText(text).then(function(){showToast('Código copiado.');}).catch(function(){showToast('Não foi possível copiar; selecione o código.');});
+    }else{
+      var selection=document.createRange();
+      selection.selectNodeContents(dialogCode);
+      var selected=window.getSelection();
+      selected.removeAllRanges();
+      selected.addRange(selection);
+      showToast('Código selecionado: copie com Ctrl+C.');
+    }
+  });
+
+  function classificarMensagem(message){
+    var text=message.toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    if(/\b(alergia|amendoim|saude|passou mal)\b/.test(text)){
+      return {rule:'sensivel',tag:'TRANSFERÊNCIA PRIORITÁRIA',text:'Assunto sensível identificado. Encaminhando para atendimento humano com o contexto da conversa.',human:true};
+    }
+    if(/\b(503|falha|erro|indisponivel)\b/.test(text)){
+      return {rule:'falha',tag:'FALLBACK · INTEGRAÇÃO',text:'Falha simulada na integração. A conversa segue para a fila humana; nenhuma resposta de status é inventada.',human:true};
+    }
+    if(/\b(cancelar|reembolso|estorno)\b/.test(text)){
+      return {rule:'transacao',tag:'FORA DO ESCOPO',text:'Ação transacional não habilitada no MVP. Encaminhando para a equipe responsável.',human:true};
+    }
+    if(/\b(pedido|status|entrega)\b/.test(text)||text.includes('#1002')){
+      return {rule:'pedido',tag:'CONSULTA · SOMENTE LEITURA',text:'Simulação: o pedido #1002 saiu para entrega. Em produção, este trecho consultaria a API de pedidos.',human:false};
+    }
+    if(/\b(horario|cardapio|menu|aberto|endereco)\b/.test(text)){
+      return {rule:'faq',tag:'FAQ · CONTEÚDO APROVADO',text:'Simulação: encontrei uma resposta aprovada para esta dúvida. A unidade pode fornecer conteúdo atualizado.',human:false};
+    }
+    return {rule:'incerto',tag:'INTENÇÃO INCERTA',text:'Não há uma resposta aprovada para esta pergunta. Encaminhando para uma pessoa, sem adivinhar.',human:true};
+  }
+
+  var ruleMarkers={sensivel:'alergia',falha:'503',transacao:'cancelar',pedido:'pedido',faq:'horario',incerto:'return {rule:'};
+  var codeEditor=document.getElementById('editorCode');
+  var editorState=document.getElementById('editorState');
+  var editorMessage=document.getElementById('editorMessage');
+  var editorOutput=document.getElementById('editorOutput');
+  var showcaseTimers=[];
+  var showcaseRun=0;
+  var codeHasStarted=false;
+  var prefersReducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var codeRows=[];
+  var sourceLines=classificarMensagem.toString().split('\n');
+
+  function setEditorState(state,message){
+    editorState.className='editor-state '+state;
+    editorState.textContent=state==='typing'?'DIGITANDO CÓDIGO':state==='running'?'EXECUTANDO':state==='done'?'EXECUÇÃO CONCLUÍDA':state==='stopped'?'PRONTO PARA TESTE':'AGUARDANDO DEMONSTRAÇÃO';
+    editorMessage.textContent=message;
+  }
+  function clearShowcaseTimers(){
+    showcaseRun++;
+    showcaseTimers.forEach(function(timer){clearTimeout(timer);});
+    showcaseTimers=[];
+  }
+  function scheduleShowcase(callback,delay,runId){
+    var timer=setTimeout(function(){
+      if(runId===showcaseRun)callback();
+    },delay);
+    showcaseTimers.push(timer);
+  }
+  function resetCodeEditor(){
+    codeEditor.replaceChildren();
+    codeRows=[];
+    var firstRow=document.createElement('div');
+    firstRow.className='code-row';
+    var number=document.createElement('span');
+    number.className='line-number';
+    number.textContent='1';
+    var code=document.createElement('code');
+    firstRow.append(number,code);
+    codeEditor.appendChild(firstRow);
+    codeRows.push(code);
+  }
+  function appendCodeCharacter(character){
+    if(character==='\n'){
+      var row=document.createElement('div');
+      row.className='code-row';
+      var number=document.createElement('span');
+      number.className='line-number';
+      number.textContent=String(codeRows.length+1);
+      var code=document.createElement('code');
+      row.append(number,code);
+      codeEditor.appendChild(row);
+      codeRows.push(code);
+      return;
+    }
+    codeRows[codeRows.length-1].textContent+=character;
+    codeEditor.scrollTop=codeEditor.scrollHeight;
+  }
+  function renderCompleteCode(){
+    resetCodeEditor();
+    sourceLines.forEach(function(line,index){
+      if(index>0)appendCodeCharacter('\n');
+      for(var i=0;i<line.length;i++)appendCodeCharacter(line[i]);
+    });
+    var last=codeEditor.lastElementChild;
+    if(last)last.classList.add('active');
+  }
+  function highlightRule(rule){
+    codeEditor.querySelectorAll('.code-row.active').forEach(function(row){row.classList.remove('active');});
+    var marker=ruleMarkers[rule];
+    var index=sourceLines.findIndex(function(line){return line.includes(marker);});
+    if(index<0)index=sourceLines.length-1;
+    var row=codeEditor.children[index];
+    if(row){
+      row.classList.add('active');
+      codeEditor.scrollTop=Math.max(0,row.offsetTop-codeEditor.offsetTop-codeEditor.clientHeight/2);
+    }
+    editorOutput.textContent='OUTPUT · '+rule.toUpperCase();
+  }
+  function finishTyping(runId){
+    if(runId!==showcaseRun)return;
+    setEditorState('running','Código pronto. Executando exemplos automaticamente…');
+    var examples=[
+      {message:'Qual o status do meu pedido #1002?',rule:'pedido'},
+      {message:'Qual o horário de funcionamento hoje?',rule:'faq'},
+      {message:'Tenho alergia grave a amendoim.',rule:'sensivel'}
+    ];
+    function runExample(index){
+      if(runId!==showcaseRun)return;
+      if(index>=examples.length){
+        highlightRule('incerto');
+        setEditorState('done','Demo concluída. Clique em um cenário para testar outra mensagem.');
+        return;
+      }
+      var example=examples[index];
+      highlightRule(example.rule);
+      runDemo(example.message);
+      scheduleShowcase(function(){runExample(index+1);},1450,runId);
+    }
+    scheduleShowcase(function(){runExample(0);},550,runId);
+  }
+  function startCodeShowcase(){
+    clearShowcaseTimers();
+    var runId=showcaseRun;
+    resetCodeEditor();
+    editorOutput.textContent='OUTPUT · —';
+    var log=document.getElementById('consoleLog');
+    log.replaceChildren();
+    var placeholder=document.createElement('p');
+    placeholder.className='console-placeholder';
+    placeholder.append('Aguardando execução…',document.createElement('br'),'O código vai classificar três mensagens.');
+    log.appendChild(placeholder);
+    document.querySelectorAll('.scenario').forEach(function(button){button.classList.remove('active');});
+    setEditorState('typing','Preparando o motor de decisão…');
+    codeHasStarted=true;
+    if(prefersReducedMotion){
+      renderCompleteCode();
+      finishTyping(runId);
+      return;
+    }
+    var characterIndex=0;
+    var source=classificarMensagem.toString();
+    function typeNextCharacter(){
+      if(runId!==showcaseRun)return;
+      if(characterIndex>=source.length){
+        if(codeRows.length){
+          var caret=document.createElement('span');
+          caret.className='editor-caret';
+          codeRows[codeRows.length-1].appendChild(caret);
+        }
+        finishTyping(runId);
+        return;
+      }
+      appendCodeCharacter(source.charAt(characterIndex));
+      characterIndex++;
+      scheduleShowcase(typeNextCharacter,source.charAt(characterIndex-1)==='\n'?100:7,runId);
+    }
+    typeNextCharacter();
+  }
+  document.getElementById('replayCode').addEventListener('click',startCodeShowcase);
+
+  function runDemo(message){
+    var log=document.getElementById('consoleLog');
+    var placeholder=log.querySelector('.console-placeholder');
+    if(placeholder)placeholder.remove();
+    var user=document.createElement('div');
+    user.className='message user';
+    var label=document.createElement('span');
+    label.className='label';label.textContent='CLIENTE';
+    user.appendChild(label);user.appendChild(document.createTextNode(message));
+    log.appendChild(user);
+    var result=classificarMensagem(message);
+    highlightRule(result.rule);
+    var response=document.createElement('div');
+    response.className='message system'+(result.human?' human':'');
+    var responseLabel=document.createElement('span');
+    responseLabel.className='label';responseLabel.textContent=result.tag;
+    response.appendChild(responseLabel);response.appendChild(document.createTextNode(result.text));
+    log.appendChild(response);
+    log.scrollTop=log.scrollHeight;
+    document.querySelectorAll('.scenario').forEach(function(button){
+      button.classList.toggle('active',button.dataset.message===message);
+    });
+  }
+  document.querySelectorAll('.scenario').forEach(function(button){
+    button.addEventListener('click',function(){
+      if(!codeHasStarted)startCodeShowcase();
+      else{
+        clearShowcaseTimers();
+        renderCompleteCode();
+        setEditorState('stopped','Teste manual em andamento.');
+      }
+      runDemo(button.dataset.message);
+    });
+  });
+  document.getElementById('messageForm').addEventListener('submit',function(event){
+    event.preventDefault();
+    var input=document.getElementById('messageInput');
+    var message=input.value.trim();
+    if(!message){input.focus();return;}
+    if(!codeHasStarted)startCodeShowcase();
+    else{
+      clearShowcaseTimers();
+      renderCompleteCode();
+      setEditorState('stopped','Teste manual em andamento.');
+    }
+    runDemo(message);input.value='';input.focus();
+  });
+  var progress=document.getElementById('progressBar');
+  function updateProgress(){
+    var max=document.documentElement.scrollHeight-window.innerHeight;
+    progress.style.width=(max>0?Math.min(100,window.scrollY/max*100):0)+'%';
+  }
+  window.addEventListener('scroll',updateProgress,{passive:true});
+  window.addEventListener('resize',updateProgress);
+  updateProgress();
+  if('IntersectionObserver'in window){
+    var observer=new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting)entry.target.classList.add('visible');
+      });
+    },{threshold:.12});
+    document.querySelectorAll('.reveal').forEach(function(element){observer.observe(element);});
+    var sectionObserver=new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(!entry.isIntersecting)return;
+        document.querySelectorAll('.nav a').forEach(function(link){
+          link.classList.toggle('current',link.getAttribute('href')==='#'+entry.target.id);
+        });
+      });
+    },{rootMargin:'-30% 0px -60% 0px'});
+    document.querySelectorAll('main section[id]').forEach(function(section){sectionObserver.observe(section);});
+    var editorObserver=new IntersectionObserver(function(entries){
+      if(entries.some(function(entry){return entry.isIntersecting})){
+        if(!codeHasStarted)startCodeShowcase();
+        editorObserver.disconnect();
+      }
+    },{threshold:.2});
+    editorObserver.observe(document.getElementById('liveEditor'));
+  }else{
+    document.querySelectorAll('.reveal').forEach(function(element){element.classList.add('visible');});
+    startCodeShowcase();
+  }
+</script>
+</body>
+</html>
